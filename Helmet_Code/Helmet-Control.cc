@@ -7,6 +7,7 @@
 #include <exception>
 #include <Magick++.h>
 #include <magick/image.h>
+#include <signal.h>
 
 using rgb_matrix::RGBMatrix;
 using rgb_matrix::Canvas;
@@ -14,14 +15,23 @@ using rgb_matrix::FrameCanvas;
 using ImageVector = std::vector<Magick::Image>;
 
 Canvas *canvas;
+volatile bool interrupt_recieved = false;
+static void InterruptHandler(int signo){
+	interrupt_recieved = true;
+}
 
 static void LoadFace(const char *filename);
 void drawFace(const Magick::Image &image, Canvas *canvas);
 void changeFace (void);
 
 int main(int argc, char *argv[]){
+	Magick::InitializeMagick(*argv);
+
+	signal(SIGTERM, InterruptHandler);
+	signal(SIGINT, InterruptHandler);
+
 	wiringPiSetup();
-	wiringPiISR(21, INT_EDGE_FALLING, &changeFace);
+	wiringPiISR(3, INT_EDGE_FALLING, &changeFace);
 
 	RGBMatrix::Options defaults;
 	defaults.hardware_mapping = "regular";
@@ -32,6 +42,13 @@ int main(int argc, char *argv[]){
 	canvas = RGBMatrix::CreateFromFlags(&argc, &argv, &defaults);
 	if (canvas == NULL){
 		return 1;
+	}
+
+	LoadFace("Protogen-Neutral.png");
+	while(1){
+		if(interrupt_recieved){
+			return 1;
+		}
 	}
 }
 static void LoadFace(const char *filename){
