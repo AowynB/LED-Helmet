@@ -1,6 +1,6 @@
 #include "../include/led-matrix.h"
-#include "wiringPi.h"
-
+       //#include "wiringPi.h"
+#include <iostream>
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
@@ -9,6 +9,7 @@
 #include <magick/image.h>
 #include <signal.h>
 
+using namespace std;
 using rgb_matrix::RGBMatrix;
 using rgb_matrix::Canvas;
 using rgb_matrix::FrameCanvas;
@@ -30,16 +31,17 @@ int main(int argc, char *argv[]){
 	signal(SIGTERM, InterruptHandler);
 	signal(SIGINT, InterruptHandler);
 
-	wiringPiSetup();
-	wiringPiISR(3, INT_EDGE_FALLING, &changeFace);
+	//wiringPiSetup();
+	//wiringPiISR(3, INT_EDGE_FALLING, &changeFace);
 
 	RGBMatrix::Options defaults;
 	defaults.hardware_mapping = "regular";
 	defaults.rows = 32;
 	defaults.cols = 64;
-	defaults.chain_length = 2;
+	defaults.chain_length = 1;
 	defaults.parallel = 1;
 	canvas = RGBMatrix::CreateFromFlags(&argc, &argv, &defaults);
+	
 	if (canvas == NULL){
 		return 1;
 	}
@@ -47,10 +49,12 @@ int main(int argc, char *argv[]){
 	LoadFace("Protogen-Neutral.png");
 	while(1){
 		if(interrupt_recieved){
+			delete canvas;
 			return 1;
 		}
 	}
-}
+	delete canvas;
+} 
 static void LoadFace(const char *filename){
 	ImageVector face;
 
@@ -71,11 +75,13 @@ static void LoadFace(const char *filename){
 }
 
 void drawFace(const Magick::Image &image, Canvas *canvas){
-	for(int i = 0; i < image.rows(); ++i){
-		for(int j = 0; j < image.columns(); ++j){
-			const Magick::Color &c = image.pixelColor(i, j);
+	cout << "      " << image.rows() << endl;
+	cout << "      " << image.columns() << endl;
+	for(size_t i = 0; i < image.rows(); ++i){
+		for(size_t j = 0; j < image.columns(); ++j){
+			const Magick::Color &c = image.pixelColor(j, i);
 			if(c.alphaQuantum() < 256){
-				canvas->SetPixel (i, j,
+				canvas->SetPixel (j, i,
 					ScaleQuantumToChar(c.redQuantum()),
 					ScaleQuantumToChar(c.greenQuantum()),
 					ScaleQuantumToChar(c.blueQuantum()));
